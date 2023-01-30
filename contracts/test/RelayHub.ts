@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { utils } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { takeSnapshot, revertToSnapshot } from "./helpers/snapshot";
-import { signForwardRequest } from "./helpers/sign";
+import { signForwardRequest, signPermit } from "./helpers/sign";
 import {
   RelayHub,
   RelayHub__factory,
@@ -31,15 +31,8 @@ describe("RelayHub", function () {
     hub = await new RelayHub__factory(admin).deploy();
 
     // deploy test tokens
-    token1 = await new Token__factory(admin).deploy(hub.address);
-    token2 = await new Token__factory(admin).deploy(hub.address);
-
-    // distribute tokens to users
-    const amount = utils.parseEther("100000");
-    await token1.connect(admin).transfer(alice.address, amount);
-    await token1.connect(admin).transfer(bob.address, amount);
-    await token2.connect(admin).transfer(alice.address, amount);
-    await token2.connect(admin).transfer(bob.address, amount);
+    token1 = await new Token__factory(admin).deploy("TestToken1", "TT1");
+    token2 = await new Token__factory(admin).deploy("TestToken2", "TT2");
   });
 
   beforeEach(async () => {
@@ -92,18 +85,46 @@ describe("RelayHub", function () {
     let req2: RelayHub.ForwardRequestStruct;
     let signature1: string;
     let signature2: string;
-    const transferAmount = utils.parseEther("100");
+    const approveAmount = utils.parseEther("100");
 
     before(async function () {
+      const deadline = Math.floor(Date.now() / 1000) + 1000;
+      const approveSign1 = utils.splitSignature(
+        await signPermit(
+          alice,
+          "TestToken1",
+          token1.address,
+          bob.address,
+          approveAmount,
+          0,
+          deadline
+        )
+      );
+      const approveSign2 = utils.splitSignature(
+        await signPermit(
+          bob,
+          "TestToken2",
+          token2.address,
+          alice.address,
+          approveAmount,
+          0,
+          deadline
+        )
+      );
       req1 = {
         from: alice.address,
         to: token1.address,
         value: 0,
         gas: 1000000,
         nonce: 0,
-        data: token1.interface.encodeFunctionData("transfer", [
+        data: token1.interface.encodeFunctionData("permit", [
+          alice.address,
           bob.address,
-          transferAmount,
+          approveAmount,
+          deadline,
+          approveSign1.v,
+          approveSign1.r,
+          approveSign1.s,
         ]),
       };
       req2 = {
@@ -112,18 +133,29 @@ describe("RelayHub", function () {
         value: 0,
         gas: 1000000,
         nonce: 0,
-        data: token2.interface.encodeFunctionData("transfer", [
+        data: token2.interface.encodeFunctionData("permit", [
+          bob.address,
           alice.address,
-          transferAmount,
+          approveAmount,
+          deadline,
+          approveSign2.v,
+          approveSign2.r,
+          approveSign2.s,
         ]),
       };
       signature1 = await signForwardRequest(alice, hub.address, req1);
       signature2 = await signForwardRequest(bob, hub.address, req2);
     });
 
+    it("only owner can call execute", async function () {
+      await expect(
+        hub.connect(alice).execute([req1, req2], [signature1])
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
     it("should fail when length is different", async function () {
       await expect(
-        hub.execute([req1, req2], [signature1])
+        hub.connect(admin).execute([req1, req2], [signature1])
       ).to.be.revertedWithoutReason();
     });
 
@@ -164,12 +196,11 @@ describe("RelayHub", function () {
     });
 
     it("when request fails", async function () {
-      const balance = await token1.balanceOf(alice.address);
       const req: RelayHub.ForwardRequestStruct = {
         ...req1,
         data: token1.interface.encodeFunctionData("transfer", [
           bob.address,
-          balance.add(1),
+          1000,
         ]),
       };
       const signature = await signForwardRequest(alice, hub.address, req);
@@ -189,10 +220,8 @@ describe("RelayHub", function () {
       expect(await hub.getNonce(alice.address)).to.be.eq(0);
       expect(await hub.getNonce(bob.address)).to.be.eq(0);
 
-      const aliceBeforeBalance1 = await token1.balanceOf(alice.address);
-      const aliceBeforeBalance2 = await token2.balanceOf(alice.address);
-      const bobBeforeBalance1 = await token1.balanceOf(bob.address);
-      const bobBeforeBalance2 = await token2.balanceOf(bob.address);
+      expect(await token1.allowance(alice.address, bob.address)).to.be.eq(0);
+      expect(await token2.allowance(bob.address, alice.address)).to.be.eq(0);
 
       const res = await hub
         .connect(admin)
@@ -205,26 +234,20 @@ describe("RelayHub", function () {
       expect(res.successes[0]).to.be.true;
       expect(res.successes[1]).to.be.true;
 
-      const result1 = utils.defaultAbiCoder.decode(["bool"], res.results[0]);
-      expect(result1[0]).to.be.true;
-      const result2 = utils.defaultAbiCoder.decode(["bool"], res.results[1]);
-      expect(result2[0]).to.be.true;
-
-      expect(await token1.balanceOf(alice.address)).to.be.eq(
-        aliceBeforeBalance1.sub(transferAmount)
-      );
-      expect(await token1.balanceOf(bob.address)).to.be.eq(
-        bobBeforeBalance1.add(transferAmount)
-      );
-      expect(await token2.balanceOf(alice.address)).to.be.eq(
-        aliceBeforeBalance2.add(transferAmount)
-      );
-      expect(await token2.balanceOf(bob.address)).to.be.eq(
-        bobBeforeBalance2.sub(transferAmount)
-      );
+      expect(res.results[0]).to.be.eq("0x");
+      expect(res.results[1]).to.be.eq("0x");
 
       expect(await hub.getNonce(alice.address)).to.be.eq(1);
       expect(await hub.getNonce(bob.address)).to.be.eq(1);
+
+      expect(await token1.allowance(alice.address, bob.address)).to.be.eq(
+        approveAmount
+      );
+      expect(await token2.allowance(bob.address, alice.address)).to.be.eq(
+        approveAmount
+      );
+      expect(await token1.nonces(alice.address)).to.be.eq(1);
+      expect(await token2.nonces(bob.address)).to.be.eq(1);
     });
   });
 });

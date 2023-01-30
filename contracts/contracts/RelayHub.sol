@@ -3,9 +3,10 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title RelayHub
-contract RelayHub is EIP712 {
+contract RelayHub is EIP712, Ownable {
     using ECDSA for bytes32;
 
     /// @notice ForwardRequest struct
@@ -73,6 +74,7 @@ contract RelayHub is EIP712 {
     )
         external
         payable
+        onlyOwner
         returns (bool[] memory successes, bytes[] memory results)
     {
         if (reqs.length != signatures.length) {

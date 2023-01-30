@@ -1,22 +1,24 @@
 import { ethers } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  const RelayHub = await ethers.getContractFactory("RelayHub");
+  const hub = await RelayHub.deploy();
+  await hub.deployed();
 
-  const lockedAmount = ethers.utils.parseEther("1");
+  console.log(`RelayHub deployed to ${hub.address}`);
 
-  const Lock = await ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+  const Token = await ethers.getContractFactory("Token");
+  const token1 = await Token.deploy("TestToken1", "TT1");
+  await token1.deployed();
 
-  await lock.deployed();
+  console.log(`Token #1 deployed to ${token1.address}`);
 
-  console.log(`Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`);
+  const token2 = await Token.deploy("TestToken2", "TT2");
+  await token2.deployed();
+
+  console.log(`Token #2 deployed to ${token2.address}`);
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -23,7 +23,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     localhost: {
-      url: "http://127.0.0.1:8645/",
+      url: "http://127.0.0.1:8545/",
     },
   },
   typechain: {

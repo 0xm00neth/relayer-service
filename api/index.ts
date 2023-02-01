@@ -2,6 +2,7 @@ import { BigNumber, utils } from "ethers";
 import express, { Express, Request, Response } from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
+import cors from "cors";
 import { ForwardRequest, MetaTxRequest } from "./types";
 import { verifyRequest, execute } from "./contract";
 
@@ -36,6 +37,8 @@ const processRequests = async () => {
 };
 
 app.use(bodyParser.json());
+
+app.use(cors());
 
 app.post("/submit", async (req: Request, res: Response) => {
   let { tx, signature } = req.body;

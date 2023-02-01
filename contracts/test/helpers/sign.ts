@@ -7,8 +7,7 @@ export const signForwardRequest = async (
   verifier: string,
   request: RelayHub.ForwardRequestStruct
 ): Promise<string> => {
-  // const chainId = BigNumber.from(await signer.getChainId());
-  const chainId = 31337;
+  const chainId = BigNumber.from(await signer.getChainId());
   const domain = {
     name: "RelayHub",
     version: "1",
@@ -55,8 +54,7 @@ export const signPermit = async (
   nonce: number,
   deadline: number
 ): Promise<string> => {
-  // const chainId = BigNumber.from(await signer.getChainId());
-  const chainId = 31337;
+  const chainId = BigNumber.from(await signer.getChainId());
   const domain = {
     name,
     version: "1",

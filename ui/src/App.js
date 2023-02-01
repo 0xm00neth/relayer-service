@@ -4,6 +4,7 @@ import { useMetaMask } from "metamask-react";
 import "./App.css";
 import tokenAbi from "./abi/erc20.json";
 import relayHubAbi from "./abi/relayHub.json";
+import { Permit, ForwardRequest } from "./types";
 
 function App() {
   const [tokenAddress, setTokenAddress] = useState("");
@@ -56,28 +57,7 @@ function App() {
           verifyingContract: tokenAddress,
         };
         let types = {
-          Permit: [
-            {
-              name: "owner",
-              type: "address",
-            },
-            {
-              name: "spender",
-              type: "address",
-            },
-            {
-              name: "value",
-              type: "uint256",
-            },
-            {
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              name: "deadline",
-              type: "uint256",
-            },
-          ],
+          Permit,
         };
         const deadline = Math.floor(Date.now() / 1000) + 1000;
         let nonce = await token.nonces(account);
@@ -121,32 +101,7 @@ function App() {
           verifyingContract: process.env.REACT_APP_RELAY_HUB,
         };
         types = {
-          ForwardRequest: [
-            {
-              name: "from",
-              type: "address",
-            },
-            {
-              name: "to",
-              type: "address",
-            },
-            {
-              name: "value",
-              type: "uint256",
-            },
-            {
-              name: "gas",
-              type: "uint256",
-            },
-            {
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              name: "data",
-              type: "bytes",
-            },
-          ],
+          ForwardRequest,
         };
         const signature = await signer._signTypedData(domain, types, request);
 

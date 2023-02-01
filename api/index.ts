@@ -54,19 +54,11 @@ app.post("/submit", async (req: Request, res: Response) => {
     return res.status(400).send({ success: false, message: "Invalid Request" });
   }
   let value: BigNumber;
-  try {
-    value = BigNumber.from(tx.value);
-  } catch (err) {
-    return res.status(400).send({ success: false, message: "Invalid Request" });
-  }
   let gas: BigNumber;
-  try {
-    gas = BigNumber.from(tx.gas);
-  } catch (err) {
-    return res.status(400).send({ success: false, message: "Invalid Request" });
-  }
   let nonce: BigNumber;
   try {
+    value = BigNumber.from(tx.value);
+    gas = BigNumber.from(tx.gas);
     nonce = BigNumber.from(tx.nonce);
   } catch (err) {
     return res.status(400).send({ success: false, message: "Invalid Request" });

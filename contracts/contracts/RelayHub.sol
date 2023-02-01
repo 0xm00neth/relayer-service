@@ -9,7 +9,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract RelayHub is EIP712, Ownable {
     using ECDSA for bytes32;
 
+    /**************/
+    /* Structures */
+    /**************/
+
     /// @notice ForwardRequest struct
+    /// @param from Transaction from address
+    /// @param to Transaction to address
+    /// @param value Transaction value amount
+    /// @param gas Transaction gas amount
+    /// @param nonce Transaction nonce
+    /// @param data Transaction data
     struct ForwardRequest {
         address from;
         address to;
@@ -19,16 +29,32 @@ contract RelayHub is EIP712, Ownable {
         bytes data;
     }
 
+    /*************/
+    /* Constants */
+    /*************/
+
     /// @dev ForwardRequest Type Hash
     bytes32 private constant _TYPEHASH =
         keccak256(
             "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)"
         );
 
+    /***********/
+    /* Storage */
+    /***********/
+
     /// @dev User address to nonce
     mapping(address => uint256) private _nonces;
 
+    /***************/
+    /* Constructor */
+    /***************/
+
     constructor() EIP712("RelayHub", "1") {}
+
+    /******************/
+    /* View Functions */
+    /******************/
 
     /// @notice Get user's current nonce
     function getNonce(address from) public view returns (uint256) {
@@ -62,6 +88,10 @@ contract RelayHub is EIP712, Ownable {
             _nonces[req.from] == req.nonce &&
             signer == req.from;
     }
+
+    /********************/
+    /* Admion Functions */
+    /********************/
 
     /// @notice Execute multiple meta transactions
     /// @param reqs List of ForwardRequest
